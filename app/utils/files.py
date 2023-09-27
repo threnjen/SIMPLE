@@ -29,18 +29,18 @@ def write_results(players, game, games, episode_length):
         "p2_points": np.sum([x.points for x in players[1:]]),
     }
 
-    if not os.path.exists(config.RESULTSPATH):
-        with open(config.RESULTSPATH, "a") as csvfile:
+    if not os.path.exists('viz/results.csv'):
+        with open('viz/results.csv', "a") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=out.keys())
             writer.writeheader()
 
-    with open(config.RESULTSPATH, "a") as csvfile:
+    with open('viz/results.csv', "a") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=out.keys())
         writer.writerow(out)
 
 
 def load_model(env, name):
-    filename = os.path.join(config.MODELDIR, env.name, name)
+    filename = f"zoo/{env.name}/{name}"
     if os.path.exists(filename):
         logger.info(f"Loading {name}")
         cont = True
@@ -60,9 +60,9 @@ def load_model(env, name):
                 if rank == 0:
                     ppo_model = PPO1(get_network_arch(env.name), env=env)
                     logger.info(f"Saving base.zip PPO model...")
-                    ppo_model.save(os.path.join(config.MODELDIR, env.name, "base.zip"))
+                    ppo_model.save(f"zoo/{env.name}/base.zip")
                 else:
-                    ppo_model = PPO1.load(os.path.join(config.MODELDIR, env.name, "base.zip"), env=env)
+                    ppo_model = PPO1.load(f"zoo/{env.name}/base.zip", env=env)
 
                 cont = False
             except IOError as e:
@@ -78,7 +78,7 @@ def load_model(env, name):
 
 
 def load_all_models(env):
-    modellist = [f for f in os.listdir(os.path.join(config.MODELDIR, env.name)) if f.startswith("_model")]
+    modellist = [f for f in os.listdir(f"zoo/{env.name}") if f.startswith("_model")]
     modellist.sort()
     models = [load_model(env, "base.zip")]
     for model_name in modellist:
@@ -86,8 +86,8 @@ def load_all_models(env):
     return models
 
 
-def get_best_model_name(env_name):
-    modellist = [f for f in os.listdir(os.path.join(config.MODELDIR, env_name)) if f.startswith("_model")]
+def get_best_model_name(game_name):
+    modellist = [f for f in os.listdir(f"zoo/{game_name}") if f.startswith("_model")]
 
     if len(modellist) == 0:
         filename = None
@@ -113,29 +113,29 @@ def get_model_stats(filename):
     return generation, timesteps, best_rules_based, best_reward
 
 
-def reset_logs(model_dir):
+def reset_logs(model_directory):
     try:
-        filelist = [f for f in os.listdir(config.LOGDIR) if f not in [".gitignore"]]
+        filelist = [f for f in os.listdir("logs") if f not in [".gitignore"]]
         for f in filelist:
             if os.path.isfile(f):
-                os.remove(os.path.join(config.LOGDIR, f))
+                os.remove(f"{"logs"}/{f}")
 
         for i in range(100):
-            if os.path.exists(os.path.join(config.LOGDIR, f"tb_{i}")):
-                rmtree(os.path.join(config.LOGDIR, f"tb_{i}"))
+            if os.path.exists(f"{"logs"}/tb_{i}"):
+                rmtree(f"{"logs"}/tb_{i}")
 
-        open(os.path.join(config.LOGDIR, "log.txt"), "a").close()
+        open(f"{"logs"}/log.txt", "a").close()
 
     except Exception as e:
         print(e)
         print("Reset logs failed")
 
 
-def reset_models(model_dir):
+def reset_models(model_directory):
     try:
-        filelist = [f for f in os.listdir(model_dir) if f not in [".gitignore"]]
+        filelist = [f for f in os.listdir(model_directory) if f not in [".gitignore"]]
         for f in filelist:
-            os.remove(os.path.join(model_dir, f))
+            os.remove(f"{model_directory}/{f}")
     except Exception as e:
         print(e)
         print("Reset models failed")

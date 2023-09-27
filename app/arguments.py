@@ -11,7 +11,7 @@ INPUT_CONFIG = {
     "verbose": [False, bool, "Show observation in debug output"],
     "rules": [False, bool, "Evaluate on a ruled-based agent"],
     "best": [False, bool, "Uses best moves when evaluating agent against rules-based agent"],
-    "env_name": [
+    "game_name": [
         "tictactoe",
         str,
         "Which gym environment to train in: tictactoe, connect4, sushigo, butterfly, geschenkt, frouge",

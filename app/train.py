@@ -36,7 +36,7 @@ debug_logging = INPUT_CONFIG["debug"][0]
 verbose_output = INPUT_CONFIG["verbose"][0]
 use_rules = INPUT_CONFIG["rules"][0]
 use_best = INPUT_CONFIG["best"][0]
-env_name = INPUT_CONFIG["env_name"][0]
+game_name = INPUT_CONFIG["game_name"][0]
 random_seed = INPUT_CONFIG["seed"][0]
 eval_freq = INPUT_CONFIG["eval_freq"][0]
 n_eval_episodes = INPUT_CONFIG["n_eval_episodes"][0]
@@ -55,17 +55,17 @@ adam_epsilon = INPUT_CONFIG["adam_epsilon"][0]
 def main(arg_config):
     rank = MPI.COMM_WORLD.Get_rank()
 
-    model_dir = os.path.join(config.MODELDIR, env_name)
+    model_directory = f"zoo/{game_name}"
 
     if rank == 0:
         try:
-            os.makedirs(model_dir)
+            os.makedirs(model_directory)
         except:
             pass
-        reset_logs(model_dir)
+        reset_logs(model_directory)
         if model_reset:
-            reset_models(model_dir)
-        logger.configure(config.LOGDIR)
+            reset_models(model_directory)
+        logger.configure("logs")
     else:
         logger.configure(format_strs=[])
 
@@ -79,11 +79,11 @@ def main(arg_config):
     set_global_seeds(workerseed)
 
     logger.info("\nSetting up the selfplay training environment opponents...")
-    base_env = get_environment(env_name)
-    env = selfplay_wrapper(base_env)(opponent_type=opponent_type, verbose=verbose_output)
+    game_env = get_environment(game_name)
+    env = selfplay_wrapper(game_env)(opponent_type=opponent_type, verbose=verbose_output)
     env.seed(workerseed)
 
-    CustomPolicy = get_network_arch(env_name)
+    CustomPolicy = get_network_arch(game_name)
 
     params = {
         "gamma": gamma,
@@ -97,24 +97,24 @@ def main(arg_config):
         "adam_epsilon": adam_epsilon,
         "schedule": "linear",
         "verbose": 1,
-        "tensorboard_log": config.LOGDIR,
+        "tensorboard_log": "logs",
     }
 
     time.sleep(5)  # allow time for the base model to be saved out when the environment is created
 
-    if model_reset or not os.path.exists(os.path.join(model_dir, "best_model.zip")):
+    if model_reset or not os.path.exists(f"{model_directory}/best_model.zip"):
         logger.info("\nLoading the base PPO agent to train...")
-        model = PPO1.load(os.path.join(model_dir, "base.zip"), env, **params)
+        model = PPO1.load(f"{model_directory}/base.zip", env, **params)
     else:
         logger.info("\nLoading the best_model.zip PPO agent to continue training...")
-        model = PPO1.load(os.path.join(model_dir, "best_model.zip"), env, **params)
+        model = PPO1.load(f"{model_directory}/best_model.zip", env, **params)
 
     # Callbacks
     logger.info("\nSetting up the selfplay evaluation environment opponents...")
     callback_args = {
-        "eval_env": selfplay_wrapper(base_env)(opponent_type=opponent_type, verbose=verbose_output),
-        "best_model_save_path": config.TMPMODELDIR,
-        "log_path": config.LOGDIR,
+        "eval_env": selfplay_wrapper(game_env)(opponent_type=opponent_type, verbose=verbose_output),
+        "best_model_save_path": "zoo/tmp",
+        "log_path": "logs",
         "eval_freq": eval_freq,
         "n_eval_episodes": n_eval_episodes,
         "deterministic": False,
@@ -126,7 +126,7 @@ def main(arg_config):
         logger.info("\nSetting up the evaluation environment against the rules-based agent...")
         # Evaluate against a 'rules' agent as well
         eval_actual_callback = EvalCallback(
-            eval_env=selfplay_wrapper(base_env)(opponent_type="rules", verbose=verbose_output),
+            eval_env=selfplay_wrapper(game_env)(opponent_type="rules", verbose=verbose_output),
             eval_freq=1,
             n_eval_episodes=n_eval_episodes,
             deterministic=use_best,
@@ -136,7 +136,7 @@ def main(arg_config):
         callback_args["callback_on_new_best"] = eval_actual_callback
 
     # Evaluate the agent against previous versions
-    eval_callback = SelfPlayCallback(opponent_type, threshold, env_name, **callback_args)
+    eval_callback = SelfPlayCallback(opponent_type, threshold, game_name, **callback_args)
 
     logger.info("\nSetup complete - commencing learning...\n")
 

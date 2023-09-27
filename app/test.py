@@ -23,7 +23,7 @@ import config
 
 
 def main(args):
-    logger.configure(config.LOGDIR)
+    logger.configure("logs")
 
     if args.debug:
         logger.set_level(config.DEBUG)
@@ -31,7 +31,7 @@ def main(args):
         logger.set_level(config.INFO)
 
     # make environment
-    env = get_environment(args.env_name)(verbose=args.verbose, manual=args.manual)
+    env = get_environment(args.game_name)(verbose=args.verbose, manual=args.manual)
     env.seed(args.seed)
     set_global_seeds(args.seed)
 
@@ -160,7 +160,7 @@ def cli() -> None:
     parser.add_argument(
         "--cont", "-c", action="store_true", default=False, help="Pause after each turn to wait for user to continue"
     )
-    parser.add_argument("--env_name", "-e", type=str, default="TicTacToe", help="Which game to play?")
+    parser.add_argument("--game_name", "-e", type=str, default="TicTacToe", help="Which game to play?")
     parser.add_argument("--write_results", "-w", action="store_true", default=False, help="Write results to a file?")
     parser.add_argument("--seed", "-s", type=int, default=17, help="Random seed")
 
